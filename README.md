@@ -6,7 +6,7 @@ Just controling line follower with a remote control.
 
 Realizamos testes no TinkerCad para garantir o funcionamento adequado do projeto. Você pode visualizar os resultados dos testes [neste link](https://www.tinkercad.com/things/3ka2T3npHoD-copy-of-remote-control-arduino).
 
-![Projeto no TinkerCad](https://github.com/Gabri-el-Batata/RemoteControlArduino/blob/main/RemoteControl.cpp)
+![Projeto no TinkerCad](https://github.com/Gabri-el-Batata/RemoteControlArduino/blob/main/RemoteControlArduino.png)
 
 ## Como Usar
 
