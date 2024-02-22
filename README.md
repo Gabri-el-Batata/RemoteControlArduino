@@ -2,12 +2,12 @@
 
 Just controling line follower with a remote control.
 
-## Testes no TinkerCad
+## Tests on TinkerCad
 
-Realizamos testes no TinkerCad para garantir o funcionamento adequado do projeto. Você pode visualizar os resultados dos testes [neste link](https://www.tinkercad.com/things/3ka2T3npHoD-copy-of-remote-control-arduino).
+We carry out tests on TinkerCad to ensure the project works properly. You can view the test results [at this link](https://www.tinkercad.com/things/3ka2T3npHoD-copy-of-remote-control-arduino).
 
 ![Projeto no TinkerCad](https://github.com/Gabri-el-Batata/RemoteControlArduino/blob/main/RemoteControlArduino.png)
 
-## Como Usar
+## How to use
 
-Consiste em simplesmente saber os codigos IR em decimal e criar uma máquina de estados conforme vai apertando determinado botao
+It consists of simply knowing the IR codes in decimal and creating a state machine as you press a certain button
