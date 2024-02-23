@@ -1,63 +1,142 @@
 // C++ code
 #include <IRremote.h>
 
-enum EstadosCorrida {
-  AGUARDANDO_CATEGORIA,
-  AGUARDANDO_CALIBRACAO,
-  CALIBRACAO,
-  AGUARDANDO_CORRIDA,
-  CORRIDA,
-  CONCLUIDO
+// Constants
+const int RECV_PIN = 10;
+const float INITIAL_KP = 0;
+const float INITIAL_KD = 0;
+
+// Estados da corrida
+enum RaceStates {
+  WAITING_FOR_CATEGORY,
+  WAITING_FOR_CALIBRATION,
+  CALIBRATION,
+  WAITING_FOR_RACE,
+  RACE,
+  COMPLETED
 };
 
-int RECV_PIN = 10;
-EstadosCorrida estadoAtualCorr = AGUARDANDO_CATEGORIA;
-bool Seguidor;
+// Variables
+RaceStates currentRaceState = WAITING_FOR_CATEGORY;
+bool follower;
+// Definition of PID parameters
+float kP = INITIAL_KP;
+float kD = INITIAL_KD;
 
-void leitura_ir() {
+const unsigned long THREE = 3977428736;
+const unsigned long ONE = 4010852096;
+const unsigned long TWO = 3994140416;
+const unsigned long NINE = 3843735296;
+const unsigned long ZERO = 4077698816;
+const unsigned long LEFT_ARROW = 3977428736;
+const unsigned long RIGHT_ARROW = 3977428736;
+
+
+void handleRace(unsigned long code)
+{
+  if(code == 3977428736)
+  {
+  	estadoAtualCorr = CORRIDA;
+  }
+}
+
+void handleCalibration(unsigned long code)
+{
+	if (code == 4010852096){
+      		// Apertou 1 utiliza calibracao ja existente
+      		Serial.println("Utilizando calibracao ja existente...");
+      		estadoAtualCorr = AGUARDANDO_CORRIDA;
+    	}else if (code == 3994140416)
+    	{
+      		// Apertou 2 comeca a calibrar
+      		Serial.println("Calibrando...");
+      		estadoAtualCorr = CALIBRACAO;
+    	}
+}
+
+void handleCategory(unsigned long code)
+{
+	if (code == 3843735296)
+    {
+      // Se apertar 9 muda para o seguidor;
+      Seguidor = true;
+      estadoAtualCorr = AGUARDANDO_CALIBRACAO;
+      Serial.println("Modo Seguidor.");
+    } else if(code == 4077698816)
+    {
+      // Apertou 0 fica perseguidor
+      Seguidor = false;
+      estadoAtualCorr = CONCLUIDO;
+      Serial.println("Modo Perseguidor.");
+    }
+}
+
+void adjustPIDParameters(unsigned long code)
+{
+	 if(code == 4211392256)
+     {
+          	// Aumentando valor de kD
+            kD -=0.05;
+            Serial.print("Valor de kD: ");
+            Serial.println(kD);
+     }
+     if(code == 4177968896)
+     {
+          	// Diminui valor de kD
+            kD += 0.05;
+            Serial.print("Valor de kD: ");
+            Serial.println(kD);
+     }
+     if(code == 4111122176)
+     {
+          	// Aumenta valor de kP
+            kP += 0.05;
+            Serial.print("Valor de kP: ");
+            Serial.println(kP);
+     }
+     if(code == 4144545536)
+     {
+          	// Diminui valor de kP
+            kP -= 0.05;
+            Serial.print("Valor de kP: ");
+            Serial.println(kP);
+     }
+}
+
+void readIr() {
   if (IrReceiver.decode()){
     unsigned long code = IrReceiver.decodedIRData.decodedRawData;
     //Serial.println(code, DEC); // printar o codigo ir recebido
     IrReceiver.resume(); // receber proximo valor
     
     // Secao responsavel por escolher categoria
-    if ((code == 3843735296) && (estadoAtualCorr == AGUARDANDO_CATEGORIA))
+    if (estadoAtualCorr == AGUARDANDO_CATEGORIA)
     {
-      // Se apertar 9 muda para o seguidor;
-      Seguidor = true;
-      estadoAtualCorr = AGUARDANDO_CALIBRACAO;
-      Serial.println("Modo Seguidor.");
-    } else if((code == 4077698816) && (estadoAtualCorr == AGUARDANDO_CATEGORIA))
-    {
-      	// Apertou 0 fica perseguidor
-    	Seguidor = false;
-      	estadoAtualCorr = CONCLUIDO;
-      Serial.println("Modo Perseguidor.");
+    	mudaCategoria(code);
     }
     
     // Secao para parte da corrida
-    if (Seguidor){
-    	if ((code == 4010852096) && (estadoAtualCorr == AGUARDANDO_CALIBRACAO)){
-      		// Apertou 1 utiliza calibracao ja existente
-      		Serial.println("Utilizando calibracao ja existente...");
-      		estadoAtualCorr = AGUARDANDO_CORRIDA;
-    	}else if ((code == 3994140416) && (estadoAtualCorr == AGUARDANDO_CALIBRACAO))
+    if (Seguidor)
+    {
+    	if (estadoAtualCorr == AGUARDANDO_CALIBRACAO){
+      		carregarCriarCalib(code);
+        }
+    	if (estadoAtualCorr == AGUARDANDO_CORRIDA)
     	{
-      		// Apertou 2 comeca a calibrar
-      		Serial.println("Calibrando...");
-      		estadoAtualCorr = CALIBRACAO;
+      		correr(code);
     	}
-    	if ((code == 3977428736)&& (estadoAtualCorr == AGUARDANDO_CORRIDA))
-    	{
-      		// Apertou 3 comeca a correr
-      		estadoAtualCorr = CORRIDA;
+        
+        // Mudando Parametros do PID
+      	if (estadoAtualCorr == AGUARDANDO_CORRIDA || estadoAtualCorr == CORRIDA)
+        {
+          aumentaValoresPID(code);
     	}
-    }
-    
+     }
   }
 }
 
-void maquina_estados() {
+
+void stateMachine() {
   switch(estadoAtualCorr){
     case (AGUARDANDO_CATEGORIA):
       digitalWrite(7, HIGH);
