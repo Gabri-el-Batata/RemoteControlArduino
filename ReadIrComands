@@ -1,0 +1,34 @@
+// C++ code
+//
+#include <IRremote.h>
+void setup()
+{ 
+  IrReceiver.begin(10);
+  Serial.begin(9600);
+}
+
+char listaString[][15] = {"ZERO", "UM", "DOIS", "TRES", "NOVE", "SETA_ESQ", "SETA_DIR", "SETA_CIMA", "SETA_BAIXO"};
+
+void loop()
+{
+  for(int i = 0; i < 9; i++)
+  {
+    Serial.print("\n");
+  	Serial.print(listaString[i]);
+    Serial.print(": ");
+    while (1) {
+    	if (IrReceiver.decode()){
+    		// Get the infrared code
+    		unsigned long code = IrReceiver.decodedIRData.decodedRawData;
+    		// Map it to a specific button on the remote
+          	if (code != 0){
+ 			Serial.print(code, HEX); 
+    		// Enable receiving of the next value
+    		IrReceiver.resume();
+    		break;
+            }
+    	}
+  	}
+  }
+  delay(10);
+}
