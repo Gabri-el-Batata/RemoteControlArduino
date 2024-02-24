@@ -1,12 +1,12 @@
 // C++ code
 #include <IRremote.h>
 
-// Constants
+// Constants  
 const int RECV_PIN = 10;
 const float INITIAL_KP = 0;
 const float INITIAL_KD = 0;
 
-// Estados da corrida
+// Estados da RACE 
 enum RaceStates {
   WAITING_FOR_CATEGORY,
   WAITING_FOR_CALIBRATION,
@@ -23,80 +23,81 @@ bool follower;
 float kP = INITIAL_KP;
 float kD = INITIAL_KD;
 
-const unsigned long THREE = 3977428736;
+const unsigned long ZERO = 4077698816;
 const unsigned long ONE = 4010852096;
 const unsigned long TWO = 3994140416;
+const unsigned long THREE = 3977428736;
 const unsigned long NINE = 3843735296;
-const unsigned long ZERO = 4077698816;
-const unsigned long LEFT_ARROW = 3977428736;
-const unsigned long RIGHT_ARROW = 3977428736;
-
+const unsigned long LEFT_ARROW = 4211392256;
+const unsigned long RIGHT_ARROW = 4177968896;
+const unsigned long UP_ARROW = 4111122176;
+const unsigned long DOWN_ARROW = 4144545536;
 
 void handleRace(unsigned long code)
 {
-  if(code == 3977428736)
+  if(code == THREE)
   {
-  	estadoAtualCorr = CORRIDA;
+  	currentRaceState = RACE;
   }
 }
 
 void handleCalibration(unsigned long code)
 {
-	if (code == 4010852096){
-      		// Apertou 1 utiliza calibracao ja existente
-      		Serial.println("Utilizando calibracao ja existente...");
-      		estadoAtualCorr = AGUARDANDO_CORRIDA;
-    	}else if (code == 3994140416)
+	if (code == ONE){
+      		// Press 1, use existing calibration
+      		Serial.println("Using existing calibration...");
+      		currentRaceState = WAITING_FOR_RACE;
+    	}else if (code == TWO)
     	{
-      		// Apertou 2 comeca a calibrar
-      		Serial.println("Calibrando...");
-      		estadoAtualCorr = CALIBRACAO;
+      		// Press 2 to start calibrating
+      		Serial.println("calibrating...");
+      		currentRaceState = CALIBRATION;
     	}
 }
 
 void handleCategory(unsigned long code)
 {
-	if (code == 3843735296)
+	if (code == NINE)
     {
-      // Se apertar 9 muda para o seguidor;
+      // Press 9, change category to follower;
       Seguidor = true;
-      estadoAtualCorr = AGUARDANDO_CALIBRACAO;
-      Serial.println("Modo Seguidor.");
-    } else if(code == 4077698816)
+      currentRaceState = WAITING_FOR_CALIBRATION;
+      Serial.println("Follower mode.");
+    } else if(code == ZERO)
     {
-      // Apertou 0 fica perseguidor
+      // Press 0, change category to stalker;
       Seguidor = false;
-      estadoAtualCorr = CONCLUIDO;
-      Serial.println("Modo Perseguidor.");
+      currentRaceState = COMPLETED;
+      Serial.println("Stalker Mode.");
     }
 }
 
 void adjustPIDParameters(unsigned long code)
 {
-	 if(code == 4211392256)
+	 if(code == LEFT_ARROW)
      {
-          	// Aumentando valor de kD
+          	// decreases value of kD
             kD -=0.05;
             Serial.print("Valor de kD: ");
             Serial.println(kD);
      }
-     if(code == 4177968896)
+     if(code == RIGHT_ARROW)
      {
-          	// Diminui valor de kD
+          	// increases value of kD
             kD += 0.05;
             Serial.print("Valor de kD: ");
             Serial.println(kD);
      }
-     if(code == 4111122176)
+     if(code == UP_ARROW)
      {
-          	// Aumenta valor de kP
+          	// increases value of kP
             kP += 0.05;
             Serial.print("Valor de kP: ");
             Serial.println(kP);
      }
-     if(code == 4144545536)
+     if(code == DOWN_ARROW)
      {
-          	// Diminui valor de kP
+          	// decreases value of kP
             kP -= 0.05;
             Serial.print("Valor de kP: ");
             Serial.println(kP);
@@ -106,30 +107,29 @@ void adjustPIDParameters(unsigned long code)
 void readIr() {
   if (IrReceiver.decode()){
     unsigned long code = IrReceiver.decodedIRData.decodedRawData;
-    //Serial.println(code, DEC); // printar o codigo ir recebido
-    IrReceiver.resume(); // receber proximo valor
+    //Serial.println(code, DEC); // print code received by ir sensor
+    IrReceiver.resume(); // For next value
     
-    // Secao responsavel por escolher categoria
-    if (estadoAtualCorr == AGUARDANDO_CATEGORIA)
+    // Section responsible for choosing category
+    if (currentRaceState == WAITING_FOR_CATEGORY)
     {
-    	mudaCategoria(code);
+    	handleCategory(code);
     }
     
-    // Secao para parte da corrida
+    // Section for race
     if (Seguidor)
     {
-    	if (estadoAtualCorr == AGUARDANDO_CALIBRACAO){
-      		carregarCriarCalib(code);
+    	if (currentRaceState == WAITING_FOR_CALIBRATION){
+      		handleCalibration(code);
         }
-    	if (estadoAtualCorr == AGUARDANDO_CORRIDA)
+    	if (currentRaceState == WAITING_FOR_RACE)
     	{
-      		correr(code);
-    	}
-        
-        // Mudando Parametros do PID
-      	if (estadoAtualCorr == AGUARDANDO_CORRIDA || estadoAtualCorr == CORRIDA)
-        {
-          aumentaValoresPID(code);
+      		handleRace(code);
+    	}  
+      // Change PID parameters
+      if (currentRaceState == WAITING_FOR_RACE || currentRaceState == RACE)
+      {
+        adjustPIDParameters(code);
     	}
      }
   }
@@ -137,53 +137,53 @@ void readIr() {
 
 
 void stateMachine() {
-  switch(estadoAtualCorr){
-    case (AGUARDANDO_CATEGORIA):
+  switch(currentRaceState){
+    case (WAITING_FOR_CATEGORY):
       digitalWrite(7, HIGH);
       break;
-    case (AGUARDANDO_CALIBRACAO):
+    case (WAITING_FOR_CALIBRATION):
       break;
-    case (CALIBRACAO):
+    case (CALIBRATION):
       digitalWrite(7, LOW);
       digitalWrite(6, HIGH);
       delay(2000);
-      estadoAtualCorr = AGUARDANDO_CORRIDA;
+      currentRaceState = WAITING_FOR_RACE;
       break; 
-    case(AGUARDANDO_CORRIDA):
+    case(WAITING_FOR_RACE):
       break;
-    case (CORRIDA):
+    case (RACE):
       digitalWrite(6, LOW);
       digitalWrite(5, HIGH);
-      Serial.println("Correndo...");
+      Serial.println("Running...");
       delay(3000);
-      estadoAtualCorr = CONCLUIDO;
+      currentRaceState = COMPLETED;
       break;
-    case (CONCLUIDO):
+    case (COMPLETE):
       digitalWrite(5, LOW);
-      Serial.println("Concluido.");
-      estadoAtualCorr = AGUARDANDO_CATEGORIA;
+      Serial.println("COMPLETE.");
+      currentRaceState = WAITING_FOR_CATEGORY;
       break;
-    default: Serial.println("Escolha uma categoria."); break;
+    default: Serial.println("Choose a category."); break;
   }
   
-  switch(estadoAtualCorr){
-  case (AGUARDANDO_CATEGORIA):
-    Serial.println("AGUARDANDO_CATEGORIA");
+  switch(currentRaceState){
+  case (WAITING_FOR_CATEGORY):
+    Serial.println("WAITING_FOR_CATEGORY");
     break;
-  case AGUARDANDO_CALIBRACAO:
-    Serial.println("AGUARDANDO_CALIBRACAO");
+  case WAITING_FOR_CALIBRATION:
+    Serial.println("WAITING_FOR_CALIBRATION");
     break;
-  case CALIBRACAO: 
-    Serial.println("CALIBRACAO");
+  case CALIBRATION: 
+    Serial.println("CALIBRATION");
     break;
-  case AGUARDANDO_CORRIDA: 
-    Serial.println("AGUARDANDO_CORRIDA");
+  case WAITING_FOR_RACE: 
+    Serial.println("WAITING_FOR_RACE");
     break;
-  case CORRIDA: 
-    Serial.println("CORRIDA");
+  case RACE: 
+    Serial.println("RACE");
     break;
-  case CONCLUIDO: 
-    Serial.println("CONCLUIDO");
+  case COMPLETED: 
+    Serial.println("COMPLETE");
     break;
   }
   
@@ -200,7 +200,7 @@ void setup()
 
 void loop()
 {
- leitura_ir();
- maquina_estados();
+ readIr();
+ stateMachine();
  delay(2000);
 }
